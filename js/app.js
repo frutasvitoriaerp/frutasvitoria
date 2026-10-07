@@ -205,17 +205,18 @@ window.editProduct = function(id) {
 };
 
 window.deleteProduct = async function(id) {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    if (!confirm('Tem certeza que deseja excluir este produto? As vendas manterão o histórico mas perderão a referência ao produto.')) return;
     
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
         showToast('Erro ao excluir: ' + error.message, 'error');
         return;
     }
-    showToast('Produto excluído com sucesso', 'success');
+    showToast('Produto excluído permanentemente', 'success');
     await loadProducts();
     renderProductsTable();
     renderStockTable();
+    populateProductSelects();
     await loadDashboardData();
 };
 
