@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   root: '.',
   publicDir: 'public',
+  base: '/frutasvitoria/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
