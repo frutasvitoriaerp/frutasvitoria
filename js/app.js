@@ -1,4 +1,4 @@
-import { supabase, formatCurrency, formatDate, formatDateTime, showToast } from './supabase-client.js';
+import { supabase, formatCurrency, formatDate, formatDateTime, showToast, hasPermission } from './supabase-client.js';
 
 // Elementos DOM
 const sidebar = document.getElementById('sidebar');
@@ -36,7 +36,16 @@ async function checkAuth() {
         return;
     }
     currentUser = session.user;
-    userEmail.textContent = currentUser.email;
+    
+    // Buscar username do profile
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', currentUser.id)
+        .single();
+    
+    const displayName = profile?.username || currentUser.email;
+    userEmail.textContent = displayName;
     
     // Escutar logout
     supabase.auth.onAuthStateChange((event, session) => {
@@ -927,14 +936,19 @@ async function renderUsersTable() {
         if (ur.role) usersMap[ur.user_id].roles.push(ur.role);
     });
 
-    // Buscar emails dos usuários (auth.users não acessível diretamente via anon key)
-    // Vamos tentar buscar via RPC ou usar o que temos
+    // Buscar emails dos usuários
     const userIds = Object.keys(usersMap);
     const emails = await fetchUserEmails(userIds);
     
     userIds.forEach(id => {
         usersMap[id].email = emails[id] || id;
     });
+
+    // Buscar permissões para todos os usuários
+    const allPermissions = {};
+    for (const id of userIds) {
+        allPermissions[id] = await getUserPermissionsForUser(id);
+    }
 
     const tbody = document.querySelector('#usersTable tbody');
     tbody.innerHTML = userIds.map(id => {
@@ -943,8 +957,7 @@ async function renderUsersTable() {
             `<span class="role-badge ${r.name}">${r.name}</span>`
         ).join('') || '<span style="color: var(--text-muted);">Sem role</span>';
 
-        // Buscar permissões do usuário
-        const perms = await getUserPermissionsForUser(id);
+        const perms = allPermissions[id] || [];
         const permsHtml = perms.slice(0, 8).map(p => 
             `<span class="permission-tag">${p.resource}.${p.action}</span>`
         ).join('') + (perms.length > 8 ? `<span class="permission-tag">+${perms.length - 8} mais</span>` : '');
@@ -1002,7 +1015,7 @@ window.openUserRolesModal = async function(userId, email) {
     `).join('');
 
     modal.classList.remove('hidden');
-};
+}
 
 document.getElementById('userRolesForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1031,7 +1044,7 @@ document.getElementById('userRolesForm').addEventListener('submit', async (e) =>
     showToast('Roles atualizadas', 'success');
     closeModal('userRolesModal');
     await renderUsersTable();
-};
+});
 
 // Expor funções globais para onclick inline
 window.removeSaleItem = removeSaleItem;

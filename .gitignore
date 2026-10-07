@@ -6,6 +6,10 @@
 # Supabase
 supabase/.temp/
 
+# Build
+dist/
+node_modules/
+
 # OS
 .DS_Store
 Thumbs.db
