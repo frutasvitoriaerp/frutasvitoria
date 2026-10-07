@@ -118,6 +118,7 @@ function switchTab(tabName) {
         case 'sales': loadSalesData(); break;
         case 'stock': renderStockTable(); break;
         case 'reports': setDefaultReportDates(); break;
+        case 'users': loadUsersTab(); break;
     }
 }
 
@@ -128,7 +129,8 @@ function getTabTitle(tab) {
         customers: 'Clientes',
         sales: 'Vendas',
         stock: 'Estoque',
-        reports: 'Relatórios'
+        reports: 'Relatórios',
+        users: 'Usuários'
     };
     return titles[tab] || 'Dashboard';
 }
@@ -888,6 +890,149 @@ function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
 }
 
+// ===== USERS MANAGEMENT =====
+async function loadUsersTab() {
+    // Verificar permissão
+    const canManage = await hasPermission('users.manage');
+    const hint = document.getElementById('usersPermissionHint');
+    if (!canManage) {
+        hint.textContent = '⚠️ Você não tem permissão para gerenciar usuários (necessário: users.manage)';
+        hint.style.color = 'var(--warning)';
+    } else {
+        hint.textContent = '';
+    }
+
+    await renderUsersTable();
+}
+
+async function renderUsersTable() {
+    // Buscar usuários do auth (precisa service role para listar todos)
+    // Como fallback, buscamos da tabela user_roles
+    const { data: userRoles, error } = await supabase
+        .from('user_roles')
+        .select(`
+            user_id,
+            role:roles(name, description)
+        `);
+
+    if (error) {
+        showToast('Erro ao carregar usuários: ' + error.message, 'error');
+        return;
+    }
+
+    // Agrupar por user_id
+    const usersMap = {};
+    (userRoles || []).forEach(ur => {
+        if (!usersMap[ur.user_id]) usersMap[ur.user_id] = { roles: [] };
+        if (ur.role) usersMap[ur.user_id].roles.push(ur.role);
+    });
+
+    // Buscar emails dos usuários (auth.users não acessível diretamente via anon key)
+    // Vamos tentar buscar via RPC ou usar o que temos
+    const userIds = Object.keys(usersMap);
+    const emails = await fetchUserEmails(userIds);
+    
+    userIds.forEach(id => {
+        usersMap[id].email = emails[id] || id;
+    });
+
+    const tbody = document.querySelector('#usersTable tbody');
+    tbody.innerHTML = userIds.map(id => {
+        const user = usersMap[id];
+        const rolesHtml = user.roles.map(r => 
+            `<span class="role-badge ${r.name}">${r.name}</span>`
+        ).join('') || '<span style="color: var(--text-muted);">Sem role</span>';
+
+        // Buscar permissões do usuário
+        const perms = await getUserPermissionsForUser(id);
+        const permsHtml = perms.slice(0, 8).map(p => 
+            `<span class="permission-tag">${p.resource}.${p.action}</span>`
+        ).join('') + (perms.length > 8 ? `<span class="permission-tag">+${perms.length - 8} mais</span>` : '');
+
+        return `
+            <tr>
+                <td>${user.email}</td>
+                <td><div class="roles-list">${rolesHtml}</div></td>
+                <td><div class="permission-tags">${permsHtml || '<span style="color: var(--text-muted);">Nenhuma</span>'}</div></td>
+                <td>
+                    <button class="btn btn-secondary action-btn" onclick="openUserRolesModal('${id}', '${user.email}')" ${!canManage ? 'disabled' : ''}>
+                        Editar Roles
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function fetchUserEmails(userIds) {
+    // Tentar via RPC que usa service role
+    const { data } = await supabase.rpc('get_user_emails', { user_ids: userIds });
+    const emails = {};
+    (data || []).forEach(u => { emails[u.id] = u.email; });
+    return emails;
+}
+
+async function getUserPermissionsForUser(userId) {
+    const { data } = await supabase.rpc('get_user_permissions', { user_uuid: userId });
+    return data || [];
+}
+
+window.openUserRolesModal = async function(userId, email) {
+    const modal = document.getElementById('userRolesModal');
+    document.getElementById('userRolesUserId').value = userId;
+    document.getElementById('userRolesEmail').textContent = email;
+
+    // Carregar roles disponíveis
+    const { data: roles } = await supabase.from('roles').select('*').order('name');
+    
+    // Carregar roles atuais do usuário
+    const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role_id')
+        .eq('user_id', userId);
+    
+    const currentRoleIds = new Set((userRoles || []).map(r => r.role_id));
+
+    const container = document.getElementById('userRolesCheckboxes');
+    container.innerHTML = (roles || []).map(role => `
+        <label>
+            <input type="checkbox" name="roles" value="${role.id}" ${currentRoleIds.has(role.id) ? 'checked' : ''}>
+            <strong>${role.name}</strong> - ${role.description}
+        </label>
+    `).join('');
+
+    modal.classList.remove('hidden');
+};
+
+document.getElementById('userRolesForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const userId = document.getElementById('userRolesUserId').value;
+    const selectedRoles = Array.from(document.querySelectorAll('#userRolesCheckboxes input:checked'))
+        .map(cb => cb.value);
+
+    // Remover roles atuais
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+
+    // Adicionar novas roles
+    if (selectedRoles.length > 0) {
+        const inserts = selectedRoles.map(roleId => ({
+            user_id: userId,
+            role_id: roleId,
+            assigned_by: currentUser.id
+        }));
+        const { error } = await supabase.from('user_roles').insert(inserts);
+        if (error) {
+            showToast('Erro ao salvar: ' + error.message, 'error');
+            return;
+        }
+    }
+
+    showToast('Roles atualizadas', 'success');
+    closeModal('userRolesModal');
+    await renderUsersTable();
+};
+
 // Expor funções globais para onclick inline
 window.removeSaleItem = removeSaleItem;
 window.editProduct = editProduct;
@@ -896,3 +1041,4 @@ window.editCustomer = editCustomer;
 window.deleteCustomer = deleteCustomer;
 window.viewSaleDetail = viewSaleDetail;
 window.openStockAdjustModal = openStockAdjustModal;
+window.openUserRolesModal = openUserRolesModal;

@@ -739,3 +739,73 @@ tr:hover td {
 
 .mt-4 { margin-top: 16px; }
 .mb-4 { margin-bottom: 16px; }
+
+.permission-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--bg);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.roles-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.role-badge.admin { background: #fef2f2; color: var(--danger); }
+.role-badge.manager { background: #fff7ed; color: #ea580c; }
+.role-badge.seller { background: #ecfdf5; color: var(--success); }
+.role-badge.viewer { background: var(--primary-light); color: var(--primary); }
+
+.permission-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-height: 60px;
+    overflow-y: auto;
+}
+
+.permission-tag {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+
+#userRolesCheckboxes label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: all var(--transition);
+}
+
+#userRolesCheckboxes label:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+}
+
+#userRolesCheckboxes input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}

@@ -32,6 +32,9 @@
                 <button class="nav-item" data-tab="reports">
                     <span class="nav-icon">📊</span> Relatórios
                 </button>
+                <button class="nav-item" data-tab="users">
+                    <span class="nav-icon">👤</span> Usuários
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-danger btn-full" id="logoutBtn">Sair</button>
@@ -310,6 +313,27 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Users Tab -->
+                <section class="tab-content" id="tab-users">
+                    <div class="tab-header">
+                        <h2>Gerenciar Usuários</h2>
+                        <span class="permission-hint" id="usersPermissionHint"></span>
+                    </div>
+                    <div class="table-container">
+                        <table id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Roles</th>
+                                    <th>Permissões</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -404,6 +428,29 @@
                 <button class="modal-close" data-modal="saleDetailModal">&times;</button>
             </div>
             <div id="saleDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- User Roles Modal -->
+    <div class="modal hidden" id="userRolesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Gerenciar Roles do Usuário</h3>
+                <button class="modal-close" data-modal="userRolesModal">&times;</button>
+            </div>
+            <form id="userRolesForm">
+                <input type="hidden" id="userRolesUserId">
+                <div id="userRolesEmail" style="font-weight: 500; margin-bottom: 16px; color: var(--primary);"></div>
+                <div class="form-group">
+                    <label>Roles</label>
+                    <div id="userRolesCheckboxes" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    <small style="color: var(--text-muted);">Selecione as roles. Múltiplas roles somam permissões.</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="button" class="btn btn-secondary" data-modal="userRolesModal">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 

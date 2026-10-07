@@ -28,6 +28,51 @@ export function formatDateTime(dateString) {
     return date.toLocaleString('pt-BR');
 }
 
+// ===== PERMISSION HELPERS =====
+
+// Verificar se usuário tem permissão (chama função SQL)
+export async function hasPermission(permissionName) {
+    const { data, error } = await supabase.rpc('user_has_permission', {
+        user_uuid: (await supabase.auth.getUser()).data.user?.id,
+        perm_name: permissionName
+    });
+    if (error) {
+        console.error('Permission check error:', error);
+        return false;
+    }
+    return data === true;
+}
+
+// Verificar múltiplas permissões (precisa de todas)
+export async function hasAllPermissions(...permissions) {
+    const results = await Promise.all(permissions.map(p => hasPermission(p)));
+    return results.every(r => r);
+}
+
+// Verificar se tem pelo menos uma das permissões
+export async function hasAnyPermission(...permissions) {
+    const results = await Promise.all(permissions.map(p => hasPermission(p)));
+    return results.some(r => r);
+}
+
+// Obter roles do usuário
+export async function getUserRoles() {
+    const { data, error } = await supabase.rpc('get_user_roles', {
+        user_uuid: (await supabase.auth.getUser()).data.user?.id
+    });
+    if (error) return [];
+    return data || [];
+}
+
+// Obter permissões do usuário
+export async function getUserPermissions() {
+    const { data, error } = await supabase.rpc('get_user_permissions', {
+        user_uuid: (await supabase.auth.getUser()).data.user?.id
+    });
+    if (error) return [];
+    return data || [];
+}
+
 // Helper para mostrar toast/notificação
 export function showToast(message, type = 'info') {
     const toast = document.createElement('div');
